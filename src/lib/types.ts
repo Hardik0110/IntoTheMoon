@@ -152,6 +152,8 @@ export type SortOption =
   | 'name'
   | 'symbol'
   | 'price'
+  | 'market_cap_rank'  // Added this missing option
+  | 'total_volume'     // Added this missing option
   | 'price_change_percentage_1h_in_currency'
   | 'price_change_percentage_24h_in_currency'
   | 'price_change_percentage_7d_in_currency';

@@ -1,5 +1,5 @@
-
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { 
   AreaChart, 
   Area, 
@@ -11,53 +11,95 @@ import {
 } from 'recharts';
 
 interface PriceChartProps {
-  data: number[];
-  timespan?: string;
+  coinId: string;
+  initialTimespan?:  '7d' | '30d' | '90d' | '1y';
 }
 
-const PriceChart = ({ data, timespan = '7d' }: PriceChartProps) => {
-  const [chartData, setChartData] = useState<any[]>([]);
-  
-  useEffect(() => {
-    if (!data || data.length === 0) return;
-    
-    // Convert the data array to a format suitable for recharts
-    const formattedData = data.map((price, index) => {
-      let date = new Date();
-      
-      // Calculate the date based on the timespan
-      switch (timespan) {
-        case '7d':
-          date.setDate(date.getDate() - 7 + (index / (data.length - 1) * 7));
-          break;
-        case '30d':
-          date.setDate(date.getDate() - 30 + (index / (data.length - 1) * 30));
-          break;
-        default:
-          date.setDate(date.getDate() - 7 + (index / (data.length - 1) * 7));
-      }
-      
-      return {
-        date: date.toLocaleDateString(),
-        price: price
-      };
-    });
-    
-    setChartData(formattedData);
-  }, [data, timespan]);
-  
-  const priceChange = data && data.length > 1 ? 
-    ((data[data.length - 1] - data[0]) / data[0] * 100) : 0;
+const fetchChartData = async (coinId: string, days: string) => {
+  const interval = days === '1' ? 'hourly' : 'daily';
+  const response = await fetch(
+    `https://api.coingecko.com/api/v3/coins/${coinId}/market_chart?vs_currency=usd&days=${days}&interval=${interval}`,
+    {
+      headers: {
+        'accept': 'application/json',
+        'x-cg-demo-api-key': 'CG-4PWJabzm45BiqTTxFHaW2kcJ'
+      },
+      cache: 'force-cache'
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`);
+  }
+
+  const data = await response.json();
+
+  if (!data.prices || !Array.isArray(data.prices)) {
+    throw new Error('Invalid data format received');
+  }
+
+  return data.prices.map(([timestamp, price]: [number, number]) => ({
+    date: days === '1'
+      ? new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      : new Date(timestamp).toLocaleDateString(),
+    price: price
+  }));
+};
+
+const PriceChart = ({ coinId, initialTimespan = '7d' }: PriceChartProps) => {
+  const [timespan, setTimespan] = useState(initialTimespan);
+
+  const daysMap = {
+    '7d': '7',
+    '30d': '30',
+    '90d': '90',
+    '1y': '365'
+  };
+
+  const { data: chartData = [], isLoading, error } = useQuery({
+    queryKey: ['chartData', coinId, timespan],
+    queryFn: () => fetchChartData(coinId, daysMap[timespan]),
+    retry: 3,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  const priceChange = chartData.length > 1 ? 
+    ((chartData[chartData.length - 1].price - chartData[0].price) / chartData[0].price * 100) : 0;
   
   const color = priceChange >= 0 ? "#16C784" : "#EA3943";
-  
+
+  const timeFilters: { label: string; value: '7d' | '30d' | '90d' | '1y' }[] = [
+    { label: '7D', value: '7d' },
+    { label: '30D', value: '30d' },
+    { label: '90D', value: '90d' },
+    { label: '1Y', value: '1y' },
+  ];
+
   return (
     <div className="bg-[#1D2330]/50 p-4 rounded-lg shadow-lg">
-      <div className="flex justify-between mb-4">
+      <div className="flex justify-between items-center mb-4">
         <div>
           <h3 className="text-lg font-medium text-white">Price Chart</h3>
           <p className="text-sm text-gray-400">Last {timespan}</p>
         </div>
+        
+        <div className="flex items-center space-x-2">
+          {timeFilters.map(({ label, value }) => (
+            <button
+              key={value}
+              onClick={() => setTimespan(value)}
+              className={`px-3 py-1 rounded text-sm ${
+                timespan === value
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-[#252e3f] text-gray-300 hover:bg-[#2A3447]'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
         <div className="text-right">
           <p className={`text-lg font-medium ${priceChange >= 0 ? 'text-green-500' : 'text-red-500'}`}>
             {priceChange >= 0 ? '+' : ''}{priceChange.toFixed(2)}%
@@ -66,7 +108,15 @@ const PriceChart = ({ data, timespan = '7d' }: PriceChartProps) => {
       </div>
       
       <div className="h-64">
-        {chartData.length > 0 ? (
+        {isLoading ? (
+          <div className="flex items-center justify-center h-full">
+            <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-solid border-blue-500 border-r-transparent"></div>
+          </div>
+        ) : error ? (
+          <div className="flex items-center justify-center h-full">
+            <p className="text-red-500">{error instanceof Error ? error.message : 'Error loading chart'}</p>
+          </div>
+        ) : chartData.length > 0 ? (
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart
               data={chartData}
@@ -110,7 +160,7 @@ const PriceChart = ({ data, timespan = '7d' }: PriceChartProps) => {
           </ResponsiveContainer>
         ) : (
           <div className="flex items-center justify-center h-full">
-            <p className="text-gray-400">Loading chart data...</p>
+            <p className="text-gray-400">No chart data available</p>
           </div>
         )}
       </div>

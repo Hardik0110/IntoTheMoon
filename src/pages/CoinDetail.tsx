@@ -10,7 +10,6 @@ const CoinDetail = () => {
   const { coinId } = useParams<{ coinId: string }>();
   const { data: coinDetails, isLoading, isError } = useCoinDetails(coinId || '');
 
-  // Scroll to top when navigating to this page
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
@@ -100,10 +99,10 @@ const CoinDetail = () => {
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
           <div className="lg:col-span-2">
-            <PriceChart 
-              data={coinDetails.market_data?.sparkline_7d?.price || []} 
-              timespan="7d"
-            />
+          <PriceChart 
+            coinId={coinId || ''} 
+            initialTimespan="7d"
+          />
           </div>
           
           <div className="bg-[#1D2330]/50 rounded-lg shadow-lg p-4">
@@ -255,14 +254,6 @@ const CoinDetail = () => {
           </div>
         </div>
       </div>
-      
-      <footer className="bg-[#1D2330] py-6 mt-12">
-        <div className="container mx-auto px-4">
-          <p className="text-center text-gray-400 text-sm">
-            Data provided by CoinGecko API • {new Date().getFullYear()} • CoinVista
-          </p>
-        </div>
-      </footer>
     </div>
   );
 };

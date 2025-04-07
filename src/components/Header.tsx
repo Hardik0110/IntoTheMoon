@@ -32,11 +32,11 @@ const Header = () => {
   };
 
   return (
-    <header className="bg-gradient-to-r from-[#1D2330] to-[#2C3340] py-4 px-6 shadow-md sticky top-0 z-50">
-      <div className="container mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+    <header className="bg-gradient-to-r from-[#1D2330] to-[#2C3340] py-4  shadow-md sticky top-0 z-50">
+      <div className=" mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
         <div className="flex items-center">
           <Link to="/" className="flex items-center">
-            <span className="text-2xl font-bold text-white mr-2">Coin<span className="text-blue-500">Vista</span></span>
+            <span className="text-2xl font-bold text-white mr-2">2THE<span className="text-blue-500">MOON</span></span>
           </Link>
           {totalCoins && (
             <span className="text-sm text-gray-400 hidden md:block">

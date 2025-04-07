@@ -1,4 +1,3 @@
-
 import { useQuery, } from '@tanstack/react-query';
 import { 
   CoinGeckoResponse, 
@@ -6,6 +5,7 @@ import {
   SortOption, 
   CoinDetails 
 } from "@/lib/types";
+
 
 export const searchCoins = async (query: string): Promise<SearchResult> => {
   if (!query) return { coins: [] };
@@ -35,10 +35,22 @@ export const fetchCoins = async (
   sortBy?: SortOption, 
   sortDirection?: 'asc' | 'desc'
 ): Promise<CoinGeckoResponse[]> => {
-  const order = sortBy 
-    ? `${sortDirection === 'asc' ? '' : '-'}${sortBy}`
-    : 'market_cap_desc';
-  
+  let order = 'market_cap_desc'; 
+
+  if (sortBy) {
+    switch (sortBy) {
+      case 'market_cap':
+        order = `market_cap_${sortDirection}`;
+        break;
+      case 'volume':
+        order = `volume_${sortDirection}`;
+        break;
+      case 'id':
+        order = `id_${sortDirection}`;
+        break;
+    }
+  }
+
   const params = new URLSearchParams({
     vs_currency: 'usd',
     order,
@@ -60,19 +72,52 @@ export const fetchCoins = async (
 };
 
 export const fetchCoinDetails = async (coinId: string): Promise<CoinDetails> => {
-  const url = `https://api.coingecko.com/api/v3/coins/${coinId}?localization=false&tickers=false&market_data=true&community_data=false&developer_data=false&sparkline=true`;
+  const coinIdMap: { [key: string]: string } = {
+    'ripple': 'xrp',
+    'bitcoin-cash': 'bch',
+    'bitcoin-sv': 'bsv',
+  };
+
+  const mappedCoinId = coinIdMap[coinId.toLowerCase()] || coinId;
+
+  const url = `https://api.coingecko.com/api/v3/coins/${mappedCoinId}?localization=false&tickers=false&market_data=true&community_data=false&developer_data=false&sparkline=true`;
+  
   const options = {
     method: 'GET',
     headers: {
-      accept: 'application/json',
+      'accept': 'application/json',
       'x-cg-demo-api-key': 'CG-4PWJabzm45BiqTTxFHaW2kcJ'
-    }
+    },
+    cache: 'force-cache' as RequestCache
   };
 
   try {
-    const response = await fetch(url, options);
-    if (!response.ok) throw new Error('Network response was not ok');
-    return response.json();
+    const maxRetries = 3;
+    let retryCount = 0;
+    
+    while (retryCount < maxRetries) {
+      try {
+        const response = await fetch(url, options);
+        
+        if (response.status === 429) {
+          const retryAfter = response.headers.get('retry-after') || '60';
+          await new Promise(resolve => setTimeout(resolve, parseInt(retryAfter) * 1000));
+          retryCount++;
+          continue;
+        }
+
+        if (!response.ok) throw new Error('Network response was not ok');
+        return response.json();
+        
+      } catch (err) {
+        if (retryCount === maxRetries - 1) throw err;
+        retryCount++;
+        await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
+      }
+    }
+    
+    throw new Error('Max retries reached');
+    
   } catch (error) {
     console.error('Error fetching coin details:', error);
     throw error;

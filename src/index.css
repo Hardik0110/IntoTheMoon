@@ -49,7 +49,6 @@
     font-feature-settings: "rlig" 1, "calt" 1;
   }
   
-  /* Add some custom scrollbar styles */
   ::-webkit-scrollbar {
     width: 8px;
     height: 8px;
@@ -73,9 +72,38 @@
   @apply h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-500 border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite];
 }
 
-/* Responsive table adjustments */
 @media (max-width: 768px) {
   .responsive-table {
     @apply block overflow-x-auto;
   }
+}
+
+.overflow-y-auto {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+}
+
+.overflow-y-auto::-webkit-scrollbar {
+  width: 6px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+thead {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+
+th {
+  position: sticky;
+  top: 0;
+  z-index: 50;
 }

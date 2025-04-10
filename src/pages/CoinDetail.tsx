@@ -1,9 +1,9 @@
-
 import { useParams, Link } from 'react-router-dom';
 import { useEffect } from 'react';
 import { useCoinDetails } from '@/lib/api';
 import Header from '@/components/Header';
 import PriceChart from '@/components/PriceChart';
+import { Card } from '@/components/ui/card';
 import { ArrowLeft } from 'lucide-react';
 
 const CoinDetail = () => {
@@ -32,7 +32,7 @@ const CoinDetail = () => {
     if (value === undefined) return 'text-gray-500';
     if (value > 0) return 'text-green-500';
     if (value < 0) return 'text-red-500';
-    return 'text-gray-500';
+    return 'text-gray-500'; 
   };
 
   if (isLoading) {
@@ -67,7 +67,7 @@ const CoinDetail = () => {
       <Header />
       
       <div className="container mx-auto py-8 px-4">
-        <div className="mb-6">
+        <Card className="mb-6 p-6">
           <Link to="/" className="text-blue-500 hover:underline flex items-center mb-4">
             <ArrowLeft className="mr-1" size={16} /> Back to Coins
           </Link>
@@ -95,17 +95,17 @@ const CoinDetail = () => {
               </div>
             </div>
           </div>
-        </div>
+        </Card>
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-          <div className="lg:col-span-2">
-          <PriceChart 
-            coinId={coinId || ''} 
-            initialTimespan="7d"
-          />
-          </div>
+          <Card className="lg:col-span-2 p-4">
+            <PriceChart 
+              coinId={coinId || ''} 
+              initialTimespan="7d"
+            />
+          </Card>
           
-          <div className="bg-[#1D2330]/50 rounded-lg shadow-lg p-4">
+          <Card className="p-4">
             <h3 className="text-lg font-medium mb-4 pb-2 border-b border-gray-700">Market Stats</h3>
             
             <div className="space-y-4">
@@ -149,11 +149,11 @@ const CoinDetail = () => {
                 </span>
               </div>
             </div>
-          </div>
+          </Card>
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          <div className="bg-[#1D2330]/50 rounded-lg shadow-lg p-4">
+          <Card className="p-4">
             <h3 className="text-lg font-medium mb-4">Price Change</h3>
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -193,9 +193,9 @@ const CoinDetail = () => {
                 </p>
               </div>
             </div>
-          </div>
+          </Card>
           
-          <div className="bg-[#1D2330]/50 rounded-lg shadow-lg p-4">
+          <Card className="p-4">
             <h3 className="text-lg font-medium mb-4">About {coinDetails.name}</h3>
             {coinDetails.description?.en ? (
               <div 
@@ -251,7 +251,7 @@ const CoinDetail = () => {
                 )}
               </div>
             </div>
-          </div>
+          </Card>
         </div>
       </div>
     </div>

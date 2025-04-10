@@ -1,4 +1,3 @@
-
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useGlobalData, useSearchCoins } from '@/lib/api';
@@ -32,8 +31,8 @@ const Header = () => {
   };
 
   return (
-    <header className="bg-gradient-to-r from-[#1D2330] to-[#2C3340] py-4  shadow-md sticky top-0 z-50">
-      <div className=" mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+    <header className="bg-gradient-to-r from-[#1D2330] to-[#2C3340] py-4 shadow-md sticky top-0 z-[100]">
+      <div className="mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
         <div className="flex items-center">
           <Link to="/" className="flex items-center">
             <span className="text-2xl font-bold text-white mr-2">2THE<span className="text-blue-500">MOON</span></span>
@@ -50,7 +49,8 @@ const Header = () => {
             <input
               type="text"
               placeholder="Search coins..."
-              className="w-full px-4 py-2 pl-10 bg-[#252e3f] border border-gray-700 rounded-lg text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-2 pl-10 bg-[#252e3f] border border-gray-700 rounded-lg text-gray-200 focus:out
+              line-none focus:ring-2 focus:ring-blue-500"
               value={searchQuery}
               onChange={handleSearchChange}
               onFocus={() => searchQuery && setIsSearchActive(true)}
@@ -59,7 +59,7 @@ const Header = () => {
           </div>
           
           {isSearchActive && searchQuery && (
-            <div className="absolute w-full mt-1 bg-[#252e3f] border border-gray-700 rounded-lg shadow-lg z-10 max-h-96 overflow-y-auto">
+            <div className="absolute w-full mt-1 bg-[#252e3f] border border-gray-700 rounded-lg shadow-lg z-[101] max-h-96 overflow-y-auto">
               {isLoading ? (
                 <div className="p-4 text-center text-gray-400">Searching...</div>
               ) : searchData?.coins && searchData.coins.length > 0 ? (

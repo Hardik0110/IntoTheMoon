@@ -1,56 +1,66 @@
-import { useQuery, } from '@tanstack/react-query';
-import { 
-  CoinGeckoResponse, 
-  SearchResult, 
-  SortOption, 
-  CoinDetails 
-} from "@/lib/types";
+import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
+import {
+  CoinGeckoResponse,
+  SearchResult,
+  SortOption,
+  CoinDetails,
+} from '@/lib/types';
 
+const API_CONFIG = {
+  baseUrl: 'https://api.coingecko.com/api/v3',
+  apiKey: 'CG-4PWJabzm45BiqTTxFHaW2kcJ',
+  defaultHeaders: {
+    accept: 'application/json',
+  }
+};
+
+async function apiRequest<T>(
+  endpoint: string,
+  options: RequestInit = {},
+  retries = 3
+): Promise<T> {
+  const url = `${API_CONFIG.baseUrl}${endpoint}`;
+  const config = {
+    ...options,
+    headers: {
+      ...API_CONFIG.defaultHeaders,
+      'x-cg-demo-api-key': API_CONFIG.apiKey,
+      ...options.headers,
+    },
+  };
+
+  let lastError: Error | null = null;
+  for (let attempt = 0; attempt < retries; attempt++) {
+    try {
+      const response = await fetch(url, config);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const data = await response.json();
+      return data as T;
+    } catch (error) {
+      lastError = error as Error;
+      if (attempt === retries - 1) {
+        console.error(`Failed to fetch ${url}:`, error);
+      }
+    }
+  }
+  throw lastError || new Error('Failed to fetch data');
+}
 
 export const searchCoins = async (query: string): Promise<SearchResult> => {
   if (!query) return { coins: [] };
-
-  const url = `https://api.coingecko.com/api/v3/search?query=${encodeURIComponent(query)}`;
-  const options = {
-    method: 'GET',
-    headers: {
-      accept: 'application/json',
-      'x-cg-demo-api-key': 'CG-4PWJabzm45BiqTTxFHaW2kcJ'
-    }
-  };
-
-  try {
-    const response = await fetch(url, options);
-    if (!response.ok) throw new Error('Network response was not ok'); 
-    return response.json();
-  } catch (error) {
-    console.error('Error searching coins:', error);
-    throw error;
-  }
-}
+  return apiRequest<SearchResult>(`/search?query=${encodeURIComponent(query)}`);
+};
 
 export const fetchCoins = async (
-  page = 1, 
-  perPage = 50, 
-  sortBy?: SortOption, 
+  page = 1,
+  perPage = 50,
+  sortBy?: SortOption,
   sortDirection?: 'asc' | 'desc'
 ): Promise<CoinGeckoResponse[]> => {
-  let order = 'market_cap_desc'; 
-
-  if (sortBy) {
-    switch (sortBy) {
-      case 'market_cap':
-        order = `market_cap_${sortDirection}`;
-        break;
-      case 'volume':
-        order = `volume_${sortDirection}`;
-        break;
-      case 'id':
-        order = `id_${sortDirection}`;
-        break;
-    }
-  }
-
+  const order = sortBy ? `${sortBy}_${sortDirection}` : 'market_cap_desc';
+  
   const params = new URLSearchParams({
     vs_currency: 'usd',
     order,
@@ -60,121 +70,87 @@ export const fetchCoins = async (
     price_change_percentage: '1h,24h,7d,30d',
   });
 
-  return fetch(`https://api.coingecko.com/api/v3/coins/markets?${params}`, {
-    headers: {
-      accept: 'application/json',
-      'x-cg-demo-api-key': 'CG-4PWJabzm45BiqTTxFHaW2kcJ'
-    }
-  }).then(response => {
-    if (!response.ok) throw new Error('Network response was not ok');
-    return response.json();
-  });
+  return apiRequest<CoinGeckoResponse[]>(`/coins/markets?${params}`);
 };
 
 export const fetchCoinDetails = async (coinId: string): Promise<CoinDetails> => {
-  const coinIdMap: { [key: string]: string } = {
+  const coinIdMap: Record<string, string> = {
     'ripple': 'xrp',
     'bitcoin-cash': 'bch',
     'bitcoin-sv': 'bsv',
   };
 
   const mappedCoinId = coinIdMap[coinId.toLowerCase()] || coinId;
+  const params = new URLSearchParams({
+    localization: 'false',
+    tickers: 'false',
+    market_data: 'true',
+    community_data: 'false',
+    developer_data: 'false',
+    sparkline: 'true'
+  });
 
-  const url = `https://api.coingecko.com/api/v3/coins/${mappedCoinId}?localization=false&tickers=false&market_data=true&community_data=false&developer_data=false&sparkline=true`;
-  
-  const options = {
-    method: 'GET',
-    headers: {
-      'accept': 'application/json',
-      'x-cg-demo-api-key': 'CG-4PWJabzm45BiqTTxFHaW2kcJ'
-    },
-    cache: 'force-cache' as RequestCache
-  };
-
-  try {
-    const maxRetries = 3;
-    let retryCount = 0;
-    
-    while (retryCount < maxRetries) {
-      try {
-        const response = await fetch(url, options);
-        
-        if (response.status === 429) {
-          const retryAfter = response.headers.get('retry-after') || '60';
-          await new Promise(resolve => setTimeout(resolve, parseInt(retryAfter) * 1000));
-          retryCount++;
-          continue;
-        }
-
-        if (!response.ok) throw new Error('Network response was not ok');
-        return response.json();
-        
-      } catch (err) {
-        if (retryCount === maxRetries - 1) throw err;
-        retryCount++;
-        await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
-      }
-    }
-    
-    throw new Error('Max retries reached');
-    
-  } catch (error) {
-    console.error('Error fetching coin details:', error);
-    throw error;
-  }
+  return apiRequest<CoinDetails>(
+    `/coins/${mappedCoinId}?${params}`,
+    { cache: 'force-cache' }
+  );
 };
 
 export const fetchGlobalData = async (): Promise<number> => {
-  const url = 'https://api.coingecko.com/api/v3/global';
-  const options = {
-    method: 'GET',
-    headers: {
-      accept: 'application/json',
-      'x-cg-demo-api-key': 'CG-4PWJabzm45BiqTTxFHaW2kcJ'
-    }
-  };
-
-  try {
-    const response = await fetch(url, options);
-    if (!response.ok) throw new Error('Network response was not ok');
-    const data = await response.json();
-    return data.data.active_cryptocurrencies;
-  } catch (error) {
-    console.error('Error fetching global data:', error);
-    throw error;
-  }
+  const response = await apiRequest<{ data: { active_cryptocurrencies: number } }>('/global');
+  return response.data.active_cryptocurrencies;
 };
-
 
 export const useSearchCoins = (query: string) => {
   return useQuery({
     queryKey: ['coinSearch', query],
     queryFn: () => searchCoins(query),
-    enabled: !!query, 
-    staleTime: 5 * 60 * 1000, 
+    enabled: !!query,
+    staleTime: 5 * 60 * 1000,
   });
 };
 
-export const useCoins = (
-  page: number = 1,
+export const useInfiniteCoins = (
   perPage: number = 50,
   sortBy?: SortOption,
   sortDirection?: 'asc' | 'desc'
 ) => {
-  return useQuery({
-    queryKey: ['coins', page, perPage, sortBy, sortDirection],
-    queryFn: () => fetchCoins(page, perPage, sortBy, sortDirection),
-    placeholderData: (previousData) => previousData,
-    staleTime: 60 * 1000, 
+  return useInfiniteQuery<CoinGeckoResponse[]>({
+    queryKey: ['coinsInfinite', perPage, sortBy, sortDirection],
+    queryFn: ({ pageParam }) => fetchCoins(pageParam as number, perPage, sortBy, sortDirection),
+    getNextPageParam: (lastPage, allPages) =>
+      lastPage.length < perPage ? undefined : allPages.length + 1,
+    initialPageParam: 1,
+    staleTime: 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    retry: false,
   });
 };
+
+export const createIntersectionObserver = (
+  callback: (entry: IntersectionObserverEntry) => void,
+  { threshold = 0.5, rootMargin = '100px' } = {}
+): IntersectionObserver => {
+  let isCallbackInProgress = false;
+
+  return new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (entry.isIntersecting && !isCallbackInProgress) {
+        isCallbackInProgress = true;
+        callback(entry);
+      }
+    });
+  }, { threshold, rootMargin });
+};
+;
 
 export const useCoinDetails = (coinId: string) => {
   return useQuery({
     queryKey: ['coinDetails', coinId],
     queryFn: () => fetchCoinDetails(coinId),
-    enabled: !!coinId, 
-    staleTime: 2 * 60 * 1000, 
+    enabled: !!coinId,
+    staleTime: 2 * 60 * 1000,
   });
 };
 
@@ -182,7 +158,7 @@ export const useGlobalData = () => {
   return useQuery({
     queryKey: ['globalData'],
     queryFn: fetchGlobalData,
-    staleTime: 5 * 60 * 1000, 
+    staleTime: 5 * 60 * 1000,
   });
 };
 
